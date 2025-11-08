@@ -165,7 +165,10 @@ jobs:
             echo "GN_ARGS=$GN_ARGS"
             echo "Target: ${{ matrix.target }}"
         env:
+          V8_FROM_SOURCE: "1"
+          GN_ARGS: 'extra_cflags=["-DV8_TLS_MODEL=\"global-dynamic\"","-fPIC"] is_clang=true'
           RUSTFLAGS: "-C relocation-model=pic"
+          CARGO_NET_GIT_FETCH_WITH_CLI: "true"
 
       - name: List built wheels
         run: |
