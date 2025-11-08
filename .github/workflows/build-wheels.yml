@@ -3,31 +3,27 @@ name: Build Wheels
 on:
   push:
     tags:
-      - 'v*'  # 当推送 v* 标签时触发（如 v2.1.0）
+      - 'v*'
   pull_request:
     branches:
       - main
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
 
 env:
-  # 使用预编译的 V8，避免从源码编译
   V8_FROM_SOURCE: 0
-  # Rust 编译缓存
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
-  # sccache 配置
   SCCACHE_GHA_ENABLED: "true"
   RUSTC_WRAPPER: "sccache"
 
 jobs:
-  # Linux 构建（使用 manylinux 容器支持更多发行版）
-  build_wheels_manylinux:
-    name: Build manylinux wheels
-    runs-on: ubuntu-latest
+  # Linux 构建 - 直接在 ubuntu 上构建
+  build_wheels_linux:
+    name: Build Linux wheels
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         python-version: [ '3.11' ]
-        target: [ x86_64 ]  # aarch64 需要 QEMU，编译时间过长，可选
 
     steps:
       - uses: actions/checkout@v4
@@ -40,56 +36,48 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libffi-dev libssl-dev pkg-config patchelf
+
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.4
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.target }}-${{ matrix.python-version }}
+          key: linux-${{ matrix.python-version }}
           cache-on-failure: true
 
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.target }}
-          args: --release --strip --out dist -i python${{ matrix.python-version }}
-          # 使用 manylinux2014 获得最大兼容性
-          manylinux: 2014
-          sccache: 'true'
-          before-script-linux: |
-            # 安装编译依赖
-            yum install -y gcc gcc-c++ make cmake libffi-devel openssl-devel || \
-            dnf install -y gcc gcc-c++ make cmake libffi-devel openssl-devel || \
-            apt-get update && apt-get install -y build-essential cmake libffi-dev libssl-dev || true
+      - name: Install maturin
+        run: pip install maturin auditwheel
 
-            # 创建 cargo 配置以修复 V8 TLS 链接问题
-            mkdir -p .cargo
-            cat > .cargo/config.toml << 'EOF'
-            [target.x86_64-unknown-linux-gnu]
-            rustflags = [
-                "-C", "relocation-model=pic",
-                "-C", "link-arg=-Wl,-z,notext",
-            ]
-            EOF
-
-            # 设置环境变量
-            export V8_FROM_SOURCE=0
-            export CARGO_NET_GIT_FETCH_WITH_CLI=true
+      - name: Build wheel
+        run: |
+          export V8_FROM_SOURCE=0
+          maturin build --release --strip --out dist
         env:
-          V8_FROM_SOURCE: "0"
+          RUSTFLAGS: "-C relocation-model=pic -C link-arg=-Wl,-z,notext"
+
+      - name: Repair wheel with auditwheel
+        run: |
+          auditwheel repair dist/*.whl --plat manylinux_2_31_x86_64 -w dist/repaired || cp dist/*.whl dist/repaired/
+          rm dist/*.whl
+          mv dist/repaired/*.whl dist/
+        continue-on-error: true
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: manylinux-wheels-${{ matrix.target }}-py${{ matrix.python-version }}
+          name: linux-wheels-py${{ matrix.python-version }}
           path: dist/*.whl
           if-no-files-found: error
 
-  # macOS 构建（包含 x86_64 和 Apple Silicon）
+  # macOS 构建
   build_wheels_macos:
     name: Build macOS universal wheels
-    runs-on: macos-13  # 使用 Intel Mac，编译更稳定
+    runs-on: macos-13
     strategy:
       matrix:
         python-version: [ '3.11' ]
@@ -109,9 +97,7 @@ jobs:
 
       - name: Install build dependencies (macOS)
         run: |
-          # 确保 Xcode Command Line Tools 已安装
           xcode-select --install 2>/dev/null || true
-          # 安装可能需要的其他依赖
           brew install cmake pkg-config || true
 
       - name: Setup sccache
@@ -130,7 +116,6 @@ jobs:
           args: --release --strip --out dist -i python${{ matrix.python-version }}
           sccache: 'true'
         env:
-          # macOS 特定环境变量
           MACOSX_DEPLOYMENT_TARGET: '10.12'
           V8_FROM_SOURCE: '0'
 
@@ -144,7 +129,7 @@ jobs:
   # Windows 构建
   build_wheels_windows:
     name: Build Windows wheels
-    runs-on: windows-2022  # 使用较新的 Windows runner
+    runs-on: windows-2022
     strategy:
       matrix:
         python-version: [ '3.11' ]
@@ -183,9 +168,7 @@ jobs:
           args: --release --strip --out dist -i python${{ matrix.python-version }}
           sccache: 'true'
         env:
-          # Windows 特定环境变量
           V8_FROM_SOURCE: '0'
-          # 确保使用 MSVC 链接器
           CC: cl.exe
           CXX: cl.exe
 
@@ -227,12 +210,12 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     needs:
-      - build_wheels_manylinux
+      - build_wheels_linux
       - build_wheels_macos
       - build_wheels_windows
       - build_sdist
     permissions:
-      id-token: write  # 用于 PyPI trusted publishing
+      id-token: write
 
     steps:
       - name: Download all artifacts
