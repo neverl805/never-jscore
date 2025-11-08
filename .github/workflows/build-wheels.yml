@@ -54,8 +54,8 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: --release --strip --out dist -i python${{ matrix.python-version }}
-          # 使用 manylinux_2_28 以获得更好的 TLS 和现代链接器支持
-          manylinux: 2_28
+          # 使用 manylinux2014 获得最大兼容性
+          manylinux: 2014
           sccache: 'true'
           before-script-linux: |
             # 安装编译依赖
@@ -63,13 +63,20 @@ jobs:
             dnf install -y gcc gcc-c++ make cmake libffi-devel openssl-devel || \
             apt-get update && apt-get install -y build-essential cmake libffi-dev libssl-dev || true
 
+            # 创建 cargo 配置以修复 V8 TLS 链接问题
+            mkdir -p .cargo
+            cat > .cargo/config.toml << 'EOF'
+[target.x86_64-unknown-linux-gnu]
+rustflags = [
+    "-C", "relocation-model=pic",
+    "-C", "link-arg=-Wl,-z,notext",
+]
+EOF
+
             # 设置环境变量
             export V8_FROM_SOURCE=0
             export CARGO_NET_GIT_FETCH_WITH_CLI=true
         env:
-          # 修复 V8 TLS 重定位问题的多重标志组合
-          RUSTFLAGS: "-C relocation-model=pic -C link-arg=-Wl,-z,notext -C link-arg=-Wl,--no-as-needed -C link-arg=-lpthread"
-          # 禁止从源码编译 V8
           V8_FROM_SOURCE: "0"
 
       - name: Upload wheels
