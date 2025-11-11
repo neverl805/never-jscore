@@ -1,8 +1,10 @@
 # never_jscore 中文文档
 
 基于 Deno Core (V8) 的高性能 Python JavaScript 执行引擎，**专为 JS 逆向工程和补环境优化**。
-努力成为PyExecJS上位替代品
+努力成为PyExecJS上位替代品,目的仅为了学习技术研究,请勿用于违法用途,后果自负
 
+
+加v进交流群: xu970821582
 ## 项目特点
 
 - ⚡ **极致性能**:
