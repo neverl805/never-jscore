@@ -70,6 +70,7 @@ impl Context {
             extensions.push(crate::worker_ops::worker_ops::init());
             extensions.push(crate::fs_ops::fs_ops::init());
             extensions.push(crate::fetch_ops::fetch_ops::init());
+            extensions.push(crate::performance_ops::performance_ops::init());
 
             // 新增: 浏览器环境 API
             extensions.push(crate::ops::web_storage::web_storage_ops::init());

@@ -22,6 +22,7 @@
   - ✅ **表单数据**: FormData
   - ✅ **事件系统**: Event、EventTarget
   - ✅ **网络请求**: fetch()、XMLHttpRequest
+  - ✅ **性能监控** (v2.2.1): performance.now()、performance.mark()、performance.measure()
   - ✅ **Crypto APIs**: Base64、MD5、SHA1/256/512、HMAC、Hex
   - ✅ **URL 编码**: encodeURIComponent、encodeURI 等
   - ✅ **定时器**: setTimeout、setInterval（立即执行版本）
@@ -951,6 +952,122 @@ print(result)
 - ✅ responseText / response
 - ✅ addEventListener / removeEventListener
 
+### 9. Performance API（v2.2.1 新增）
+
+高精度性能测量 API，兼容 Web Performance Timing 标准：
+
+```python
+import never_jscore
+
+ctx = never_jscore.Context()
+
+# 1. 高精度时间戳
+result = ctx.evaluate("""
+    const start = performance.now();
+
+    // 执行一些操作
+    let sum = 0;
+    for (let i = 0; i < 1000000; i++) {
+        sum += i;
+    }
+
+    const end = performance.now();
+
+    ({
+        start: start,
+        end: end,
+        elapsed: end - start,
+        sum: sum
+    })
+""")
+print(f"耗时: {result['elapsed']:.4f}ms")
+
+# 2. 性能标记和测量
+result = ctx.evaluate("""
+    // 创建性能标记
+    performance.mark('task-start');
+
+    // 步骤 1
+    performance.mark('step1-start');
+    let data = [];
+    for (let i = 0; i < 100000; i++) {
+        data.push(i * 2);
+    }
+    performance.mark('step1-end');
+
+    // 步骤 2
+    performance.mark('step2-start');
+    let sum = data.reduce((acc, val) => acc + val, 0);
+    performance.mark('step2-end');
+
+    // 创建性能测量
+    const measure1 = performance.measure('step1-duration', 'step1-start', 'step1-end');
+    const measure2 = performance.measure('step2-duration', 'step2-start', 'step2-end');
+    const total = performance.measure('total-duration', 'task-start', 'step2-end');
+
+    // 获取所有测量结果
+    const measures = performance.getEntriesByType('measure');
+
+    ({
+        measures: measures.map(m => ({
+            name: m.name,
+            duration: m.duration.toFixed(4) + 'ms'
+        })),
+        sum: sum
+    })
+""")
+
+for measure in result['measures']:
+    print(f"{measure['name']}: {measure['duration']}")
+# 输出示例：
+# step1-duration: 2.3456ms
+# step2-duration: 1.2345ms
+# total-duration: 3.5801ms
+
+# 3. 获取性能条目
+result = ctx.evaluate("""
+    performance.mark('test1');
+    performance.mark('test2');
+    performance.measure('test-measure', 'test1', 'test2');
+
+    ({
+        allEntries: performance.getEntries(),
+        marksOnly: performance.getEntriesByType('mark'),
+        measuresOnly: performance.getEntriesByType('measure'),
+        byName: performance.getEntriesByName('test1')
+    })
+""")
+
+print(f"所有条目: {len(result['allEntries'])}")
+print(f"标记数量: {len(result['marksOnly'])}")
+print(f"测量数量: {len(result['measuresOnly'])}")
+
+# 4. 清除标记和测量
+ctx.eval("""
+    performance.clearMarks('test1');    // 清除单个标记
+    performance.clearMarks();           // 清除所有标记
+    performance.clearMeasures();        // 清除所有测量
+""")
+```
+
+**可用 API**：
+- `performance.now()` - 高精度时间戳（毫秒）
+- `performance.timeOrigin` - 时间原点（Unix 时间戳）
+- `performance.mark(name)` - 创建性能标记
+- `performance.measure(name, startMark?, endMark?)` - 测量两个标记之间的时间
+- `performance.clearMarks(name?)` - 清除标记
+- `performance.clearMeasures(name?)` - 清除测量
+- `performance.getEntries()` - 获取所有性能条目
+- `performance.getEntriesByType(type)` - 按类型获取（'mark' 或 'measure'）
+- `performance.getEntriesByName(name, type?)` - 按名称获取
+
+**使用场景**：
+- 🎯 代码性能分析和优化
+- 🎯 多步骤操作的时间分解
+- 🎯 JS 逆向中的性能瓶颈定位
+- 🎯 API 调用耗时统计
+
+
 ## 内置 Web API 扩展（v2.0+）
 
 never_jscore 内置了常用的 Web API，**无需额外 polyfill**，开箱即用！
@@ -1218,6 +1335,29 @@ MIT License
 - [PyO3](https://github.com/PyO3/pyo3) - Rust Python bindings
 
 ## 更新日志
+
+### v2.2.1 (2025-11-11) - Performance API
+
+#### 性能监控 API
+- ✨ **Performance API**: 完整的 Web Performance Timing API
+  - `performance.now()`: 高精度时间戳（毫秒级）
+  - `performance.timeOrigin`: 时间原点（Unix 时间戳）
+  - `performance.mark(name)`: 创建性能标记
+  - `performance.measure(name, start, end)`: 测量两个标记之间的时间
+  - `performance.getEntries()`: 获取所有性能条目
+  - `performance.getEntriesByType(type)`: 按类型获取（'mark' 或 'measure'）
+  - `performance.getEntriesByName(name)`: 按名称获取
+  - `performance.clearMarks()` / `performance.clearMeasures()`: 清除标记和测量
+
+#### 新增文件
+- `src/performance_ops.rs`: Performance API Rust 实现（~220 行）
+- `test_performance.py`: Performance API 测试套件
+
+#### 使用场景
+- 🎯 JavaScript 代码性能分析
+- 🎯 多步骤操作的时间分解
+- 🎯 性能瓶颈定位
+- 🎯 API 调用耗时统计
 
 ### v2.2.0 (2025-11-11) - 重大功能扩展
 

@@ -1660,3 +1660,134 @@ if (typeof XMLHttpRequest === 'undefined') {
 // Mark high-priority APIs loaded
 globalThis.__NEVER_JSCORE_HIGH_PRIORITY_APIS_LOADED__ = true;
 
+// ============================================
+// Performance API (Web Performance Timing)
+// ============================================
+
+if (typeof performance === 'undefined') {
+    class Performance {
+        /**
+         * Get high-precision timestamp in milliseconds
+         * @returns {number} Time in milliseconds since timeOrigin
+         */
+        now() {
+            return Deno.core.ops.op_performance_now();
+        }
+
+        /**
+         * Get the time origin (Unix timestamp when runtime started)
+         * @returns {number} Unix timestamp in milliseconds
+         */
+        get timeOrigin() {
+            return Deno.core.ops.op_performance_time_origin();
+        }
+
+        /**
+         * Create a performance mark
+         * @param {string} name - Mark name
+         * @returns {PerformanceMark} The created mark entry
+         */
+        mark(name) {
+            Deno.core.ops.op_performance_mark(String(name));
+            const timestamp = Deno.core.ops.op_performance_now();
+            return {
+                name: String(name),
+                entryType: 'mark',
+                startTime: timestamp,
+                duration: 0
+            };
+        }
+
+        /**
+         * Create a performance measure between two marks
+         * @param {string} name - Measure name
+         * @param {string} startMark - Start mark name (optional)
+         * @param {string} endMark - End mark name (optional)
+         * @returns {PerformanceMeasure} The created measure entry
+         */
+        measure(name, startMark = '', endMark = '') {
+            const result = Deno.core.ops.op_performance_measure(
+                String(name),
+                startMark ? String(startMark) : '',
+                endMark ? String(endMark) : ''
+            );
+
+            if (result.startsWith('Error:')) {
+                throw new Error(result);
+            }
+
+            return JSON.parse(result);
+        }
+
+        /**
+         * Clear marks
+         * @param {string} name - Mark name to clear (optional, clears all if not specified)
+         */
+        clearMarks(name = '') {
+            Deno.core.ops.op_performance_clear_marks(name ? String(name) : '');
+        }
+
+        /**
+         * Clear measures
+         * @param {string} name - Measure name to clear (optional, clears all if not specified)
+         */
+        clearMeasures(name = '') {
+            Deno.core.ops.op_performance_clear_measures(name ? String(name) : '');
+        }
+
+        /**
+         * Get all performance entries
+         * @returns {Array<PerformanceEntry>} Array of all entries
+         */
+        getEntries() {
+            const json = Deno.core.ops.op_performance_get_entries();
+            return JSON.parse(json);
+        }
+
+        /**
+         * Get performance entries by type
+         * @param {string} type - Entry type ("mark" or "measure")
+         * @returns {Array<PerformanceEntry>} Array of matching entries
+         */
+        getEntriesByType(type) {
+            const json = Deno.core.ops.op_performance_get_entries_by_type(String(type));
+            return JSON.parse(json);
+        }
+
+        /**
+         * Get performance entries by name
+         * @param {string} name - Entry name
+         * @param {string} type - Optional type filter ("mark" or "measure")
+         * @returns {Array<PerformanceEntry>} Array of matching entries
+         */
+        getEntriesByName(name, type = '') {
+            const json = Deno.core.ops.op_performance_get_entries_by_name(String(name));
+            const entries = JSON.parse(json);
+
+            if (type) {
+                return entries.filter(e => e.entryType === String(type));
+            }
+
+            return entries;
+        }
+
+        /**
+         * Convert to JSON (for debugging)
+         * @returns {Object} Performance timing info
+         */
+        toJSON() {
+            return {
+                timeOrigin: this.timeOrigin,
+                timing: {},
+                navigation: {}
+            };
+        }
+    }
+
+    // Create and export global performance object
+    globalThis.performance = new Performance();
+}
+
+// Mark Performance API loaded
+globalThis.__NEVER_JSCORE_PERFORMANCE_API_LOADED__ = true;
+

@@ -9,6 +9,7 @@ mod timer_ops;
 mod worker_ops;
 mod fs_ops;
 mod fetch_ops;
+mod performance_ops;
 
 use pyo3::prelude::*;
 
