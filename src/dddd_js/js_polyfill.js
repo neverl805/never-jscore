@@ -415,22 +415,33 @@ log('Early return API loaded: __neverjscore_return__, $return, $exit');
  * @returns {number} timer ID
  */
 if (typeof setTimeout === 'undefined') {
+    // Track active timers in JavaScript (for both setTimeout and setInterval)
+    const activeTimers = new Set();
+
     globalThis.setTimeout = function(callback, delay = 0, ...args) {
         const id = Deno.core.ops.op_get_timer_id();
+        activeTimers.add(id);  // Mark as active
 
         log(`setTimeout called: id=${id}, delay=${delay}ms`);
 
         // Use real async timer from Rust
         (async () => {
             const shouldExecute = await Deno.core.ops.op_set_timeout_real(id, Math.max(0, delay | 0));
-            if (shouldExecute) {
+
+            // Check if timer was cleared during sleep
+            if (shouldExecute && activeTimers.has(id)) {
                 log(`setTimeout executing: id=${id}`);
                 try {
                     callback(...args);
                 } catch (e) {
                     console.error(`Error in setTimeout callback (id=${id}):`, e);
                 }
+            } else if (!activeTimers.has(id)) {
+                log(`setTimeout cancelled: id=${id}`);
             }
+
+            // Clean up
+            activeTimers.delete(id);
         })();
 
         return id;
@@ -438,6 +449,7 @@ if (typeof setTimeout === 'undefined') {
 
     globalThis.setInterval = function(callback, delay = 0, ...args) {
         const id = Deno.core.ops.op_get_timer_id();
+        activeTimers.add(id);  // Mark as active
 
         log(`setInterval called: id=${id}, delay=${delay}ms`);
 
@@ -445,16 +457,27 @@ if (typeof setTimeout === 'undefined') {
         const intervalDelay = Math.max(0, delay | 0);
 
         const scheduleNext = async () => {
+            // Check if timer was cleared before sleeping
+            if (!activeTimers.has(id)) {
+                log(`setInterval stopped (cleared before sleep): id=${id}`);
+                return;  // Stop recursion
+            }
+
             const shouldExecute = await Deno.core.ops.op_set_interval_real(id, intervalDelay);
-            if (shouldExecute) {
+
+            // Check again after sleeping (timer might have been cleared during sleep)
+            if (shouldExecute && activeTimers.has(id)) {
                 log(`setInterval executing: id=${id}`);
                 try {
                     callback(...args);
                 } catch (e) {
                     console.error(`Error in setInterval callback (id=${id}):`, e);
                 }
-                // Schedule next execution
+                // Schedule next execution only if still active
                 scheduleNext();
+            } else {
+                log(`setInterval stopped (cleared or cancelled): id=${id}`);
+                activeTimers.delete(id);  // Clean up
             }
         };
 
@@ -464,12 +487,14 @@ if (typeof setTimeout === 'undefined') {
 
     globalThis.clearTimeout = function(id) {
         log(`clearTimeout called: id=${id}`);
-        Deno.core.ops.op_clear_timer(id);
+        activeTimers.delete(id);  // Remove from active set (prevents execution)
+        Deno.core.ops.op_clear_timer(id);  // Clean up Rust side
     };
 
     globalThis.clearInterval = function(id) {
         log(`clearInterval called: id=${id}`);
-        Deno.core.ops.op_clear_timer(id);
+        activeTimers.delete(id);  // Remove from active set (stops JS recursion)
+        Deno.core.ops.op_clear_timer(id);  // Clean up Rust side
     };
 
     log('Real async timers loaded: setTimeout, setInterval, clearTimeout, clearInterval');
@@ -572,6 +597,16 @@ if (typeof setImmediate === 'undefined') {
 // ============================================
 
 if (typeof process === 'undefined' || !process.version) {
+    // 读取所有环境变量
+    let envVars = {};
+    try {
+        if (typeof Deno !== 'undefined' && Deno.core.ops.op_getenv_all) {
+            envVars = JSON.parse(Deno.core.ops.op_getenv_all());
+        }
+    } catch (e) {
+        log('Failed to read environment variables:', e);
+    }
+
     globalThis.process = {
         version: 'v22.0.0',  // Mimic Node.js 22
         versions: {
@@ -586,7 +621,7 @@ if (typeof process === 'undefined' || !process.version) {
             ? Deno.build.os
             : 'win32',
         arch: 'x64',
-        env: {},
+        env: envVars,  // 使用真实的环境变量
         argv: ['node', 'script.js'],
         execPath: '/usr/bin/node',
         execArgv: [],
@@ -1440,8 +1475,16 @@ function createRequire(baseDir) {
         const paths = [];
         let currentDir = path.resolve(startDir);
         const root = path.parse(currentDir).root;
+        const visited = new Set(); // 防止无限循环
+        let maxIterations = 100; // 最大迭代次数保护
 
-        while (true) {
+        while (maxIterations-- > 0) {
+            // 检查是否访问过此目录（防止循环）
+            if (visited.has(currentDir)) {
+                break;
+            }
+            visited.add(currentDir);
+
             // 不在 node_modules 目录内
             if (!currentDir.endsWith(path.sep + 'node_modules')) {
                 paths.push(path.join(currentDir, 'node_modules'));
@@ -1452,8 +1495,30 @@ function createRequire(baseDir) {
 
             // 向上一级
             const parentDir = path.dirname(currentDir);
+
+            // 如果 dirname 返回相同路径，说明已经到根目录
             if (parentDir === currentDir) break;
+
+            // 空字符串也是到达根目录的标志
+            if (!parentDir || parentDir === '.') break;
+
             currentDir = parentDir;
+        }
+
+        // 添加 NODE_PATH 环境变量指定的路径
+        if (typeof process !== 'undefined' && process.env && process.env.NODE_PATH) {
+            const nodePath = process.env.NODE_PATH;
+            // 根据平台选择分隔符 (Windows: ';', Unix: ':')
+            const delimiter = process.platform === 'win32' ? ';' : ':';
+            const nodePathDirs = nodePath.split(delimiter)
+                .map(p => p.trim())
+                .filter(p => p.length > 0);
+
+            // 将 NODE_PATH 目录添加到搜索路径（在递归路径之后）
+            for (const dir of nodePathDirs) {
+                // NODE_PATH 可以直接指向包含模块的目录
+                paths.push(dir);
+            }
         }
 
         return paths;

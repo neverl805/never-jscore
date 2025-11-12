@@ -138,9 +138,21 @@ pub fn op_join_path(#[string] base: String, #[string] relative: String) -> Strin
 /// # Returns
 /// 目录路径字符串
 pub fn op_dirname(#[string] path: String) -> String {
-    match Path::new(&path).parent() {
-        Some(parent) => parent.to_string_lossy().to_string(),
-        None => ".".to_string(),
+    let path_obj = Path::new(&path);
+    match path_obj.parent() {
+        Some(parent) => {
+            let parent_str = parent.to_string_lossy().to_string();
+            // 如果 parent 为空字符串，说明是根目录，返回原路径
+            if parent_str.is_empty() {
+                path
+            } else {
+                parent_str
+            }
+        },
+        None => {
+            // 已经是根目录，返回路径本身
+            path
+        },
     }
 }
 
@@ -199,6 +211,37 @@ pub fn op_readdir(#[string] path: String) -> String {
     }
 }
 
+#[op2]
+#[string]
+/// 读取环境变量
+///
+/// # Arguments
+/// * `key` - 环境变量名
+///
+/// # Returns
+/// 环境变量值，如果不存在返回空字符串
+pub fn op_getenv(#[string] key: String) -> String {
+    std::env::var(&key).unwrap_or_default()
+}
+
+#[op2]
+#[string]
+/// 获取所有环境变量（JSON 格式）
+///
+/// # Returns
+/// JSON 对象字符串，包含所有环境变量
+pub fn op_getenv_all() -> String {
+    let env_vars: Vec<String> = std::env::vars()
+        .map(|(k, v)| {
+            // 转义 JSON 特殊字符
+            let key = k.replace('\\', "\\\\").replace('"', "\\\"");
+            let value = v.replace('\\', "\\\\").replace('"', "\\\"");
+            format!("\"{}\":\"{}\"", key, value)
+        })
+        .collect();
+    format!("{{{}}}", env_vars.join(","))
+}
+
 // ============================================
 // Extension Definition
 // ============================================
@@ -217,5 +260,7 @@ extension!(
         op_basename,
         op_getcwd,
         op_readdir,
+        op_getenv,
+        op_getenv_all,
     ],
 );

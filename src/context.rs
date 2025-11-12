@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 use crate::convert::{json_to_python, python_to_json};
 use crate::ops;
-use crate::runtime::get_tokio_runtime;
+use crate::runtime::{ensure_v8_initialized, run_with_tokio};
 use crate::storage::ResultStorage;
 
 // ============================================
@@ -156,9 +156,8 @@ impl Context {
 
         if auto_await {
             // 异步模式：自动等待 Promise
-            let tokio_rt = get_tokio_runtime();
-
-            tokio_rt.block_on(async {
+            // 使用线程本地的单线程 Tokio runtime
+            run_with_tokio(async {
                 let mut runtime = self.runtime.borrow_mut();
 
                 // 使用 JSON 序列化来安全转义代码字符串（处理所有特殊字符）
@@ -345,8 +344,9 @@ impl Context {
 
 impl Drop for Context {
     fn drop(&mut self) {
-        // 不做任何操作，让 Rust 自动清理
         // V8 runtime 会在 RefCell 销毁时自动清理
+        // 注意：不要在这里调用 gc()，因为 Drop 可能在不同线程上被调用
+        // 如果需要手动 GC，请在业务代码中显式调用 ctx.gc() 或使用 with 语句
     }
 }
 
@@ -570,5 +570,34 @@ impl Context {
     fn reset_stats(&self) -> PyResult<()> {
         *self.exec_count.borrow_mut() = 0;
         Ok(())
+    }
+
+    /// 上下文管理器支持：__enter__
+    ///
+    /// 允许使用 with 语句自动管理 Context 生命周期
+    ///
+    /// Example:
+    ///     ```python
+    ///     with never_jscore.Context() as ctx:
+    ///         result = ctx.evaluate("1 + 2")
+    ///         print(result)
+    ///     # Context 自动清理
+    ///     ```
+    fn __enter__(slf: Py<Self>) -> Py<Self> {
+        slf
+    }
+
+    /// 上下文管理器支持：__exit__
+    ///
+    /// 自动清理资源并请求 GC
+    fn __exit__(
+        &self,
+        _exc_type: &Bound<'_, PyAny>,
+        _exc_value: &Bound<'_, PyAny>,
+        _traceback: &Bound<'_, PyAny>,
+    ) -> PyResult<bool> {
+        // 请求 GC，帮助释放资源
+        self.gc()?;
+        Ok(false)  // 不抑制异常
     }
 }
