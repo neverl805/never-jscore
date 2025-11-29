@@ -70,73 +70,6 @@ jobs:
           name: macos-${{ matrix.target }}-wheels-py${{ matrix.python-version }}
           path: dist/*.whl
           if-no-files-found: error
-
-  # Windows 构建
-  build_wheels_windows:
-    name: Build Windows wheels
-    runs-on: windows-2022
-    strategy:
-      matrix:
-        python-version: [ '3.11' ]
-        target: [ x64 ]
-
-    steps:
-      # 启用 Windows 长路径支持（解决 deno submodule 路径过长问题）
-      - name: Enable long paths
-        run: |
-          git config --system core.longpaths true
-
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.target }}
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install MSVC Build Tools
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      # 禁用 sccache for Windows - 与 rusty_v8 有兼容性问题
-      # - name: Setup sccache
-      #   uses: mozilla-actions/sccache-action@v0.0.4
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: windows-${{ matrix.python-version }}
-          cache-on-failure: false  # 禁用失败时缓存，避免缓存损坏状态
-
-      # 清理可能损坏的 rusty_v8 缓存
-      - name: Clean rusty_v8 build artifacts
-        shell: bash
-        run: |
-          rm -rf target/x86_64-pc-windows-msvc/release/gn_root || true
-          rm -rf target/release/gn_root || true
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: x86_64-pc-windows-msvc
-          args: --release --strip --out dist -i python${{ matrix.python-version }}
-          sccache: 'false'  # 禁用 sccache
-        env:
-          V8_FROM_SOURCE: '0'
-          RUSTY_V8_MIRROR: 'https://github.com/denoland/rusty_v8/releases/download'
-          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-wheels-py${{ matrix.python-version }}
-          path: dist/*.whl
-          if-no-files-found: error
-
   # 构建源码分发包（sdist）
   build_sdist:
     name: Build source distribution
@@ -168,7 +101,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build_wheels_macos
-      - build_wheels_windows
       - build_sdist
     permissions:
       id-token: write
