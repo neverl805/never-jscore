@@ -55,7 +55,7 @@ canvas = [
 ]
 
 [dependencies]
-deno_core = { git = "https://github.com/neverl805/deno", branch = "main", optional = true }
+deno_core = {version = "0.396.0"}
 
 
 # Deno extensions from forked repo
