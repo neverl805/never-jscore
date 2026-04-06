@@ -28,7 +28,7 @@ static INIT: Once = Once::new();
 fn ensure_v8_initialized() {
     INIT.call_once(|| {
         // Initialize V8 platform (required before creating any isolates)
-        deno_core::JsRuntime::init_platform(None,false);
+        deno_core::JsRuntime::init_platform(None);
 
         // Initialize rustls CryptoProvider for HTTPS support
         #[cfg(feature = "deno_web_api")]

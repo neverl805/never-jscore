@@ -267,14 +267,13 @@ impl Context {
         // Load extensions based on configuration
         let extensions = crate::ext::all_extensions(ext_options, false /* is_snapshot */);
 
-        // Configure extension transpiler for TypeScript (node_compat feature)
+        // Configure extension transpiler for TypeScript.
+        // Required whenever deno_node is loaded (which is always when both
+        // node_compat and deno_web_api features are on) because deno_node
+        // extension files are TypeScript (.ts/.mjs with TS syntax).
         #[cfg(feature = "node_compat")]
         let extension_transpiler: Option<std::rc::Rc<dyn Fn(deno_core::ModuleName, deno_core::ModuleCodeString) -> Result<(deno_core::ModuleCodeString, Option<deno_core::SourceMapData>), deno_error::JsErrorBox>>> =
-            if enable_node_compat {
-                Some(std::rc::Rc::new(crate::transpile::maybe_transpile_source))
-            } else {
-                None
-            };
+            Some(std::rc::Rc::new(crate::transpile::maybe_transpile_source));
 
         #[cfg(not(feature = "node_compat"))]
         let extension_transpiler: Option<std::rc::Rc<dyn Fn(deno_core::ModuleName, deno_core::ModuleCodeString) -> Result<(deno_core::ModuleCodeString, Option<deno_core::SourceMapData>), deno_error::JsErrorBox>>> = None;
@@ -465,20 +464,24 @@ impl Context {
                 .map_err(|e| anyhow!("{}", format_error(e.into())))?;
             // v8::Global drops here
 
-            // compile/exec_script 行为模拟 ExecJS：
-            // 只处理微任务队列，绝不等待定时器
-            // 这样 compile 时注册的 setTimeout/setInterval 不会阻塞
+            // Drain the microtask queue after exec_script.
+            // Behavior matches ExecJS: process Promises / microtasks but never await timers.
+            // Strategy: poll with a noop waker until the event loop returns Poll::Ready
+            // (meaning the microtask queue is empty) or we hit the safety limit.
+            // Poll::Pending means there are pending I/O or timer futures -- we stop there
+            // so we never block waiting for setTimeout/setInterval.
             let waker = futures::task::noop_waker_ref();
             let mut cx = std::task::Context::from_waker(waker);
-            // 多次 poll 以处理微任务队列（Promise 等）
-            for _ in 0..10 {
-                let _ = runtime.poll_event_loop(
+            for _ in 0..32 {
+                match runtime.poll_event_loop(
                     &mut cx,
                     deno_core::PollEventLoopOptions {
                         wait_for_inspector: false,
-                        pump_v8_message_loop: true,
                     },
-                );
+                ) {
+                    std::task::Poll::Ready(_) => break,   // microtask queue empty
+                    std::task::Poll::Pending => break,    // only I/O or timers remain -- stop
+                }
             }
 
             Ok::<(), anyhow::Error>(())
@@ -553,10 +556,12 @@ impl Context {
                             __error = e;
                         }}
 
-                        // 清除所有定时器（包括 compile 期间创建的）
+                        // Cancel only timers created during this execution window.
+                        // __timerBaseId was sampled before eval; __timerEndId is sampled now.
+                        // This keeps cancellation O(timers created here) instead of O(all-time timer count).
                         const __timerEndId = setTimeout(() => {{}}, 0);
                         clearTimeout(__timerEndId);
-                        for (let i = 0; i <= __timerEndId + 1000; i++) {{
+                        for (let i = __timerBaseId; i <= __timerEndId; i++) {{
                             clearTimeout(i);
                             clearInterval(i);
                         }}
@@ -651,7 +656,6 @@ impl Context {
                             cx,
                             deno_core::PollEventLoopOptions {
                                 wait_for_inspector: false,
-                                pump_v8_message_loop: true,
                             },
                         )
                     }).await;

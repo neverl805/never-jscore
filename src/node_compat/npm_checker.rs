@@ -136,12 +136,12 @@ impl NpmPackageFolderResolver for NeverJsCoreNpmPackageFolderResolver {
 
     fn resolve_types_package_folder(
         &self,
-        package_name: &str,
-        _version: Option<&deno_semver::Version>,
-        referrer: Option<&UrlOrPathRef<'_>>,
+        types_package_name: &str,
+        _maybe_package_version: Option<&deno_semver::Version>,
+        maybe_referrer: Option<&UrlOrPathRef<'_>>,
     ) -> Option<PathBuf> {
         // Get the referrer path, or use current directory
-        let referrer_path = if let Some(ref_val) = referrer {
+        let referrer_path = if let Some(ref_val) = maybe_referrer {
             match ref_val.path() {
                 Ok(p) => p.to_path_buf(),
                 Err(_) => std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
@@ -150,25 +150,13 @@ impl NpmPackageFolderResolver for NeverJsCoreNpmPackageFolderResolver {
             std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
         };
 
-        // Get the directory to start searching from
         let start_dir = if referrer_path.is_file() {
-            referrer_path.parent().unwrap_or(&referrer_path)
+            referrer_path.parent().unwrap_or(&referrer_path).to_path_buf()
         } else {
-            &referrer_path
+            referrer_path.clone()
         };
 
-        // Try to resolve @types/package-name
-        let types_package_name = if package_name.starts_with('@') {
-            // For scoped packages like @scope/package, look for @types/scope__package
-            let without_at = &package_name[1..];
-            let normalized = without_at.replace('/', "__");
-            format!("@types/{}", normalized)
-        } else {
-            // For regular packages, look for @types/package-name
-            format!("@types/{}", package_name)
-        };
-
-        // Try to resolve the types package
-        self.resolve_in_node_modules(&types_package_name, start_dir)
+        // types_package_name is already in "@types/..." form — use directly
+        self.resolve_in_node_modules(types_package_name, &start_dir)
     }
 }

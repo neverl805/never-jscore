@@ -901,8 +901,16 @@
                     }
 
                     imageId = getCore().op_image_load_from_buffer(bytes);
+                } else if (src.startsWith('http:') || src.startsWith('https:') || src.startsWith('//')) {
+                    // Network URL -- not supported in server-side canvas context.
+                    // Silently fire onerror so supplemental environment scripts that
+                    // use "new Image().src = url" as an error beacon don't spam logs.
+                    if (this.#onerror) {
+                        this.#onerror(new Error(`Network image URLs are not supported: ${src}`));
+                    }
+                    return;
                 } else {
-                    // Assume it's a file path
+                    // Local file path
                     imageId = getCore().op_image_load_from_file(src);
                 }
 
@@ -921,9 +929,9 @@
                     this.#onload();
                 }
             } catch (error) {
-                console.error("[Image] Failed to load image:", error);
-
-                // Trigger onerror callback (synchronous, no setTimeout)
+                // Trigger onerror callback if set; otherwise silently ignore.
+                // Supplemental environment scripts often set img.src to a tracking/error
+                // beacon URL -- we don't want those to spam the console.
                 if (this.#onerror) {
                     this.#onerror(error);
                 }

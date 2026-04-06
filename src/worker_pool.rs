@@ -256,14 +256,11 @@ async fn create_and_init_runtime(
     // 获取所有extensions
     let extensions = all_extensions(ext_options, false);
 
-    // Configure extension transpiler for TypeScript (node_compat feature)
+    // Always enable TypeScript transpiler when node_compat feature is on,
+    // because deno_node is now always loaded and its extension files are TypeScript.
     #[cfg(feature = "node_compat")]
     let extension_transpiler: Option<std::rc::Rc<dyn Fn(deno_core::ModuleName, deno_core::ModuleCodeString) -> Result<(deno_core::ModuleCodeString, Option<deno_core::SourceMapData>), deno_error::JsErrorBox>>> =
-        if config.enable_node_compat {
-            Some(std::rc::Rc::new(crate::transpile::maybe_transpile_source))
-        } else {
-            None
-        };
+        Some(std::rc::Rc::new(crate::transpile::maybe_transpile_source));
 
     #[cfg(not(feature = "node_compat"))]
     let extension_transpiler: Option<std::rc::Rc<dyn Fn(deno_core::ModuleName, deno_core::ModuleCodeString) -> Result<(deno_core::ModuleCodeString, Option<deno_core::SourceMapData>), deno_error::JsErrorBox>>> = None;
@@ -358,7 +355,6 @@ async fn create_and_init_runtime(
                     &mut cx,
                     PollEventLoopOptions {
                         wait_for_inspector: false,
-                        pump_v8_message_loop: true,
                     },
                 );
             }

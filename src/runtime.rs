@@ -32,7 +32,7 @@ thread_local! {
 pub fn ensure_v8_initialized() {
     // 初始化 V8 平台（全局只执行一次）
     V8_INITIALIZED.get_or_init(|| {
-        deno_core::JsRuntime::init_platform(None,false);
+        deno_core::JsRuntime::init_platform(None);
     });
 }
 

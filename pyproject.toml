@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "never-jscore"
-version = "3.1.0"
+version = "3.2.0"
 description = "High-performance Python JavaScript execution engine based on Deno Core (V8) with full Promise/async support and official Deno Web API integration"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -1,6 +1,6 @@
 [package]
 name = "never_jscore"
-version = "3.1.0"
+version = "3.2.0"
 edition = "2021"
 authors = ["never_jscore contributors"]
 description = "High-performance Python JavaScript execution engine based on Deno Core (V8) with full Promise/async support"
@@ -15,6 +15,7 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["deno_web_api", "node_compat","canvas"]
+
 # 使用 Deno 官方 Web API
 deno_web_api = [
     "deno_webidl",
@@ -33,6 +34,8 @@ deno_web_api = [
 # Node.js 兼容层 (完整npm生态支持)
 node_compat = [
     "dep:deno_node",
+    "dep:deno_node_crypto",
+    "dep:deno_node_sqlite",
     "dep:deno_fs",
     "dep:deno_io",
     "dep:deno_os",
@@ -52,7 +55,7 @@ canvas = [
 ]
 
 [dependencies]
-deno_core = "0.380.1"
+deno_core = { git = "https://github.com/neverl805/deno", branch = "main", optional = true }
 
 
 # Deno extensions from forked repo
@@ -67,24 +70,26 @@ deno_webstorage = { git = "https://github.com/neverl805/deno", branch = "main", 
 deno_permissions = { git = "https://github.com/neverl805/deno", branch = "main", optional = true }
 deno_features = { git = "https://github.com/neverl805/deno", branch = "main", optional = true }
 deno_error = { version = "0.7.1", optional = true }
-sys_traits = { version = "0.1.17", features = ["libc", "real", "winapi"], optional = true }
+sys_traits = { version = "0.1.27", features = ["libc", "real", "winapi"], optional = true }
 
 # Node.js 兼容层依赖
 deno_node = { git = "https://github.com/neverl805/deno", branch = "main", optional = true, default-features = false  }
+deno_node_crypto = { git = "https://github.com/neverl805/deno", branch = "main", optional = true , default-features = false }
+deno_node_sqlite = { git = "https://github.com/neverl805/deno", branch = "main", optional = true , default-features = false }
 deno_fs = { git = "https://github.com/neverl805/deno", branch = "main", optional = true , default-features = false }
 deno_io = { git = "https://github.com/neverl805/deno", branch = "main", optional = true , default-features = false }
 deno_os = { git = "https://github.com/neverl805/deno", branch = "main", optional = true , default-features = false }
 deno_process = { git = "https://github.com/neverl805/deno", branch = "main", optional = true , default-features = false }
 node_resolver = { git = "https://github.com/neverl805/deno", branch = "main", optional = true , default-features = false }
 deno_semver = { version = "0.9.1", optional = true }
-deno_ast = { version = "0.50.3", features = ["transpiling"], optional = true }
+deno_ast = { version = "0.53.1", features = ["transpiling"], optional = true }
 
 # Python bindings
 pyo3 = { version = "0.27.2", features = ["extension-module", "abi3-py38"] }
 
 # Core utilities
 anyhow = "1.0.100"
-tokio = { version = "1.48", features = ["rt", "time"] }
+tokio = { version = "1.51", features = ["rt", "time"] }
 serde_json = "1.0"
 
 # Thread-safe utilities

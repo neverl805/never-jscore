@@ -28,7 +28,7 @@ import * as streams from 'ext:deno_web/06_streams.js';
 import * as encoding from 'ext:deno_web/08_text_encoding.js';
 import * as file from 'ext:deno_web/09_file.js';
 import * as fileReader from 'ext:deno_web/10_filereader.js';
-import * as location from 'ext:deno_web/12_location.js';
+import * as locationModule from 'ext:deno_web/12_location.js';
 import * as messagePort from 'ext:deno_web/13_message_port.js';
 import * as compression from 'ext:deno_web/14_compression.js';
 import * as performance from 'ext:deno_web/15_performance.js';
@@ -71,11 +71,33 @@ globalThis.dispatchEvent = event.dispatchEvent;
 // Structured Clone
 globalThis.structuredClone = structuredClone.structuredClone;
 
-// Timers (V8 native implementation via deno_web)
-globalThis.setTimeout = timers.setTimeout;
-globalThis.clearTimeout = timers.clearTimeout;
-globalThis.setInterval = timers.setInterval;
-globalThis.clearInterval = timers.clearInterval;
+// Timers -- wrapped as plain functions to be Proxy-safe.
+//
+// Problem: supplemental environment (bu-huanjing) scripts commonly wrap globalThis
+// in a Proxy (e.g. watch(window, "window")). When a timer function is accessed
+// through that Proxy and called, the JS engine sets this = <Proxy>, not globalThis.
+// Deno's checkThis() in 02_timers.js rejects anything !== null/undefined/globalThis
+// and throws "Illegal invocation".
+//
+// Fix: wrap each function so the internal call is a plain call with no this binding.
+// In strict mode a plain call sets this = undefined, which checkThis() allows.
+const _setTimeout = timers.setTimeout;
+const _clearTimeout = timers.clearTimeout;
+const _setInterval = timers.setInterval;
+const _clearInterval = timers.clearInterval;
+
+globalThis.setTimeout = function setTimeout(fn, delay, ...args) {
+    return _setTimeout(fn, delay, ...args);
+};
+globalThis.clearTimeout = function clearTimeout(id) {
+    return _clearTimeout(id);
+};
+globalThis.setInterval = function setInterval(fn, delay, ...args) {
+    return _setInterval(fn, delay, ...args);
+};
+globalThis.clearInterval = function clearInterval(id) {
+    return _clearInterval(id);
+};
 
 // AbortController / AbortSignal
 globalThis.AbortController = abortSignal.AbortController;

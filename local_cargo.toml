@@ -1,6 +1,6 @@
 [package]
 name = "never_jscore"
-version = "3.1.0"
+version = "3.2.0"
 edition = "2021"
 authors = ["never_jscore contributors"]
 description = "High-performance Python JavaScript execution engine based on Deno Core (V8) with full Promise/async support"
@@ -35,6 +35,8 @@ deno_web_api = [
 # Node.js 兼容层 (完整npm生态支持)
 node_compat = [
     "dep:deno_node",
+    "dep:deno_node_crypto",
+    "dep:deno_node_sqlite",
     "dep:deno_fs",
     "dep:deno_io",
     "dep:deno_os",
@@ -56,7 +58,9 @@ canvas = [
 
 [dependencies]
 # Core JavaScript runtime
-deno_core = "0.380.1"
+deno_core = { path = "G:/myself_rust_p/deno/libs/core" }
+# Force v8 simdutf feature to match local deno workspace requirement
+#v8 = { version = "147.0.0", default-features = false, features = ["simdutf"] }
 
 # Web API dependencies (deno_web_api feature)
 deno_webidl = { path = "G:/myself_rust_p/deno/ext/webidl", optional = true }
@@ -69,18 +73,20 @@ deno_webstorage = { path = "G:/myself_rust_p/deno/ext/webstorage", optional = tr
 deno_permissions = { path = "G:/myself_rust_p/deno/runtime/permissions", optional = true }
 deno_features = { path = "G:/myself_rust_p/deno/runtime/features", optional = true }
 deno_error = { version = "0.7.1", optional = true }
-sys_traits = { version = "0.1.17", features = ["libc", "real", "winapi"], optional = true }
+sys_traits = { version = "0.1.27", features = ["libc", "real", "winapi"], optional = true }
 rustls = { version = "0.23", features = ["ring"], optional = true }
 
 # Node.js 兼容层核心依赖 (node_compat feature)
 deno_node = { path = "G:/myself_rust_p/deno/ext/node", optional = true, default-features = false }
+deno_node_crypto = { path = "G:/myself_rust_p/deno/ext/node_crypto", optional = true }
+deno_node_sqlite = { path = "G:/myself_rust_p/deno/ext/node_sqlite", optional = true }
 deno_fs = { path = "G:/myself_rust_p/deno/ext/fs", optional = true, default-features = false }
 deno_io = { path = "G:/myself_rust_p/deno/ext/io", optional = true, default-features = false }
 deno_os = { path = "G:/myself_rust_p/deno/ext/os", optional = true, default-features = false }
 deno_process = { path = "G:/myself_rust_p/deno/ext/process", optional = true, default-features = false }
 node_resolver = { path = "G:/myself_rust_p/deno/libs/node_resolver", optional = true, default-features = false }
 deno_semver = { version = "0.9.1", optional = true }
-deno_ast = { version = "0.50.3", features = ["transpiling"], optional = true }
+deno_ast = { version = "0.53.1", features = ["transpiling"], optional = true }
 
 # Canvas 支持 (canvas feature)
 # 使用纯 Rust 实现的 tiny-skia，避免复杂的 C++ 编译
@@ -96,7 +102,7 @@ pyo3 = { version = "0.27.2", features = ["extension-module", "abi3-py38"] }
 
 # Core utilities
 anyhow = "1.0.100"
-tokio = { version = "1.48", features = ["rt", "time"] }
+tokio = { version = "1.51", features = ["rt", "time"] }
 serde_json = "1.0"
 once_cell = "1.20"
 rand = "0.8"

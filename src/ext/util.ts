@@ -4,3 +4,5 @@
 export function updateSpanFromError() {}
 export function updateSpanFromRequest() {}
 export function updateSpanFromResponse() {}
+export function updateSpanFromClientResponse() {}
+export function updateSpanFromServerResponse() {}

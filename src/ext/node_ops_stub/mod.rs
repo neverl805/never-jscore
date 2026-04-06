@@ -68,7 +68,7 @@ pub fn op_host_post_message(
 }
 
 /// Host recv ctrl (stub)
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_host_recv_ctrl(
     _state: std::rc::Rc<std::cell::RefCell<OpState>>,
@@ -78,7 +78,7 @@ pub async fn op_host_recv_ctrl(
 }
 
 /// Host recv message (stub)
-#[op2(async)]
+#[op2]
 #[serde]
 pub async fn op_host_recv_message(
     _state: std::rc::Rc<std::cell::RefCell<OpState>>,
@@ -94,6 +94,36 @@ pub fn op_host_terminate_worker(
     #[smi] _id: u32,
 ) {
     // No-op
+}
+
+/// HTTP serve address override (stub: no override)
+/// From deno_http; node:http imports this to check for Deno tunnel/serve overrides.
+#[op2]
+#[serde]
+pub fn op_http_serve_address_override() -> (u8, String, u32, bool) {
+    (0, String::new(), 0, false)
+}
+
+/// Host get worker CPU usage (stub: always zero)
+#[op2(fast)]
+pub fn op_host_get_worker_cpu_usage(
+    _state: &mut OpState,
+    #[smi] _id: u32,
+    #[buffer] out: &mut [f64],
+) {
+    if out.len() >= 2 {
+        out[0] = 0.0;
+        out[1] = 0.0;
+    }
+}
+
+/// Current thread CPU usage (stub: always zero)
+#[op2(fast)]
+pub fn op_current_thread_cpu_usage(#[buffer] out: &mut [f64]) {
+    if out.len() >= 2 {
+        out[0] = 0.0; // user
+        out[1] = 0.0; // system
+    }
 }
 
 // ============ NAPI Stubs ============
@@ -123,6 +153,9 @@ deno_core::extension!(
         op_host_recv_ctrl,
         op_host_recv_message,
         op_host_terminate_worker,
+        op_http_serve_address_override,
+        op_host_get_worker_cpu_usage,
+        op_current_thread_cpu_usage,
         op_napi_open,
     ],
 );

@@ -32,7 +32,52 @@ impl Default for NodeCompatOptions {
     }
 }
 
-/// Create Node.js compatibility extensions
+/// Create minimal Node.js extensions (deno_node module registry only, no require() loader).
+///
+/// Required even when node_compat is disabled because deno_web/02_timers.js lazy-loads
+/// `ext:deno_node/internal/timers.mjs` for its setTimeout/setInterval implementation.
+#[cfg(feature = "node_compat")]
+pub fn create_minimal_node_extensions(fs: deno_fs::FileSystemRc) -> Vec<Extension> {
+    let mut extensions = vec![];
+
+    // IO stubs (provides op_set_raw stub for deno_io)
+    extensions.push(crate::ext::never_jscore_io_stubs::init());
+
+    // Node bootstrap (no-op placeholder)
+    extensions.push(crate::ext::node_bootstrap::init());
+
+    // Node ops stubs (provides missing ops like op_bootstrap_color_depth)
+    extensions.push(crate::ext::node_ops_stub::never_jscore_node_ops::init());
+
+    // deno_io, deno_fs, deno_os, deno_process (deno_node dependencies)
+    extensions.push(deno_io::deno_io::init(Some(deno_io::Stdio::default())));
+    extensions.push(deno_fs::deno_fs::init(fs.clone()));
+    extensions.push(deno_os::deno_os::init(None));
+    extensions.push(deno_process::deno_process::init(None));
+
+    // Stub for ext:runtime/98_global_scope_shared.js (deno_node import)
+    extensions.push(crate::ext::runtime_stub::init());
+
+    // Stub for ext:deno_http/00_serve.ts (deno_node import)
+    extensions.push(crate::ext::http_stub::init());
+
+    // deno_node_crypto / deno_node_sqlite: provide ops that deno_node's polyfills
+    // import from ext:core/ops (op_node_fill_random, DatabaseSync, etc.)
+    extensions.push(deno_node_crypto::deno_node_crypto::init());
+    extensions.push(deno_node_sqlite::deno_node_sqlite::init());
+
+    // deno_node with no services — registers all ext:deno_node/... module specifiers
+    // including internal/timers.mjs needed by deno_web timers.
+    extensions.push(deno_node::deno_node::init::<
+        NeverJsCoreNpmPackageChecker,
+        NeverJsCoreNpmPackageFolderResolver,
+        sys_traits::impls::RealSys,
+    >(None, fs));
+
+    extensions
+}
+
+/// Create full Node.js compatibility extensions (deno_node + require() loader).
 ///
 /// This function creates extensions for:
 /// - deno_io (stdin/stdout/stderr)
@@ -50,24 +95,16 @@ pub fn create_node_extensions(
 
     let mut extensions = vec![];
 
-    // Create the system implementation using RealSys
     let sys = RealSys;
-
-    // Create NodeResolutionSys wrapper (with optional caching)
     let node_resolution_sys = NodeResolutionSys::new(sys.clone(), None);
 
-    // Create package.json resolver
     let pkg_json_resolver: node_resolver::PackageJsonResolverRc<RealSys> =
         MaybeArc::new(PackageJsonResolver::new(sys.clone(), None));
 
-    // Create npm package checker and folder resolver
     let npm_package_checker = NeverJsCoreNpmPackageChecker::default();
     let npm_folder_resolver = NeverJsCoreNpmPackageFolderResolver::new(options.node_modules_path.clone());
-
-    // Create builtin module checker
     let builtin_checker = DenoIsBuiltInNodeModuleChecker;
 
-    // Create the node resolver with correct type parameters
     let node_resolver: MaybeArc<deno_node::NodeResolver<
         NeverJsCoreNpmPackageChecker,
         NeverJsCoreNpmPackageFolderResolver,
@@ -81,10 +118,8 @@ pub fn create_node_extensions(
         node_resolver::NodeResolverOptions::default(),
     ));
 
-    // Create require loader
     let node_require_loader: NodeRequireLoaderRc = Rc::new(NeverJsCoreRequireLoader);
 
-    // Create init services
     let node_init_services = NodeExtInitServices {
         node_require_loader,
         node_resolver,
@@ -92,39 +127,33 @@ pub fn create_node_extensions(
         sys: sys.clone(),
     };
 
-    // Add IO stubs extension first (provides op_set_raw stub for deno_io)
+    // IO stubs (provides op_set_raw stub for deno_io)
     extensions.push(crate::ext::never_jscore_io_stubs::init());
 
-    // CRITICAL: Add bootstrap extension to create __bootstrap.ext_node_* objects
-    // before deno_node's 00_globals.js is loaded. This fixes the error:
-    // "Cannot read properties of undefined (reading 'nodeGlobals')"
+    // CRITICAL: Bootstrap extension before deno_node's 00_globals.js
     extensions.push(crate::ext::node_bootstrap::init());
 
-    // Add node ops stubs (provides missing ops like op_bootstrap_color_depth)
+    // Node ops stubs (provides missing ops like op_bootstrap_color_depth)
     extensions.push(crate::ext::node_ops_stub::never_jscore_node_ops::init());
 
-    // Add deno_io extension (required by deno_node)
-    // The extension! macro generates init(options) function
-    extensions.push(deno_io::deno_io::init(
-        Some(deno_io::Stdio::default()),
-    ));
-
-    // Add deno_fs extension (required by deno_node)
+    extensions.push(deno_io::deno_io::init(Some(deno_io::Stdio::default())));
     extensions.push(deno_fs::deno_fs::init(fs.clone()));
-
-    // Add deno_os extension (required by deno_process and deno_node)
     extensions.push(deno_os::deno_os::init(None));
-
-    // Add deno_process extension (required by deno_node)
     extensions.push(deno_process::deno_process::init(None));
 
-    // Add runtime stub extension (provides ext:runtime/98_global_scope_shared.js for deno_node)
+    // Stub for ext:runtime/98_global_scope_shared.js
     extensions.push(crate::ext::runtime_stub::init());
 
-    // Add HTTP stub extension (provides ext:deno_http/00_serve.ts stub for deno_node)
+    // Stub for ext:deno_http/00_serve.ts
     extensions.push(crate::ext::http_stub::init());
 
-    // Add deno_node extension
+    // deno_node_crypto: provides op_node_fill_random and other crypto ops
+    extensions.push(deno_node_crypto::deno_node_crypto::init());
+
+    // deno_node_sqlite: provides DatabaseSync, Session, StatementSync cppgc objects
+    extensions.push(deno_node_sqlite::deno_node_sqlite::init());
+
+    // Full deno_node with require() services
     extensions.push(deno_node::deno_node::init::<
         NeverJsCoreNpmPackageChecker,
         NeverJsCoreNpmPackageFolderResolver,
@@ -134,14 +163,19 @@ pub fn create_node_extensions(
         fs,
     ));
 
-    // Add node initialization extension (sets up global require, etc.)
+    // Node initialization (sets up global require, etc.)
     extensions.push(crate::ext::node_init::init());
 
     extensions
 }
 
-/// Create Node.js compatibility extensions without deno_node
-/// Uses our custom require.js polyfill instead
+/// Stub when node_compat feature is disabled — returns empty.
+#[cfg(not(feature = "node_compat"))]
+pub fn create_minimal_node_extensions(_fs: ()) -> Vec<Extension> {
+    vec![]
+}
+
+/// Stub when node_compat feature is disabled — returns empty.
 #[cfg(not(feature = "node_compat"))]
 pub fn create_node_extensions(_options: NodeCompatOptions) -> Vec<Extension> {
     vec![]

@@ -390,9 +390,16 @@
     // Step 6: Protect reflection APIs
     // ========================================================================
 
-    // Hidden properties that should not be exposed
-    const hiddenGlobalProps = ['Deno', '__deno_core__', '__deno_internal__',
-        '__NEVER_JSCORE_LOGGING__'];
+    // Hidden properties that should not be exposed.
+    // Node.js-specific globals (Buffer, require, etc.) are hidden so that
+    // browser-fingerprint scripts cannot detect a Node/Deno runtime environment.
+    const hiddenGlobalProps = [
+        // Deno internals
+        'Deno', '__deno_core__', '__deno_internal__', '__NEVER_JSCORE_LOGGING__',
+        // Node.js globals that betray a non-browser environment
+        'global', 'Buffer', 'require', 'module', '__dirname', '__filename',
+        'setImmediate', 'clearImmediate', 'process',
+    ];
 
     // Object.keys - hide Deno-related properties
     Object.keys = function(obj) {
@@ -443,11 +450,18 @@
     // ========================================================================
     const originalErrorConstructor = Error;
     const stackCleanPatterns = [
+        // Deno extension module paths
         /\s+at\s+.*ext:.*\n?/g,
         /\s+at\s+.*deno:.*\n?/g,
         /\s+at\s+.*deno_.*\n?/g,
         /\s+at\s+.*__deno.*\n?/g,
         /\s+at\s+.*never_jscore.*\n?/g,
+        // V8 internal synthetic script names used by never-jscore runtime
+        /\s+at\s+.*<init_core>.*\n?/g,
+        /\s+at\s+.*<init_xhr>.*\n?/g,
+        /\s+at\s+.*<exec>.*\n?/g,
+        /\s+at\s+.*<eval_async>.*\n?/g,
+        /\s+at\s+.*<anonymous>.*never.*\n?/g,
     ];
 
     function cleanStack(stack) {

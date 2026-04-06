@@ -38,6 +38,12 @@ pub mod node_init;
 #[cfg(feature = "node_compat")]
 pub mod node_bootstrap;
 
+// Minimal deno_node crypto stub — provides only ext:deno_node/internal/crypto/constants.ts
+// Needed because deno_crypto (00_crypto.js) imports kKeyObject from that specifier.
+// Only used when the full deno_node extension is NOT loaded.
+#[cfg(feature = "deno_web_api")]
+pub mod node_crypto_stub;
+
 /// Trait for creating and configuring extensions
 /// Provides a unified interface for all extension types
 pub trait ExtensionTrait<Options> {
@@ -256,15 +262,11 @@ pub(crate) fn all_extensions(options: ExtensionOptions, is_snapshot: bool) -> Ve
         // Core dependencies (in dependency order)
         extensions.push(deno_webidl::deno_webidl::init());
 
-        // TLS stub (needed when deno_node is not enabled)
-        // deno_node provides the real op_tls_peer_certificate implementation
-        #[cfg(not(feature = "node_compat"))]
+        // TLS stub: only needed when deno_node is NOT loaded.
+        // When both node_compat and deno_web_api features are on, deno_node is always
+        // loaded (even minimal), so the real op_tls_peer_certificate comes from there.
+        #[cfg(not(all(feature = "node_compat", feature = "deno_web_api")))]
         extensions.push(never_jscore_tls_stubs::init());
-
-        #[cfg(feature = "node_compat")]
-        if !options.enable_node_compat {
-            extensions.push(never_jscore_tls_stubs::init());
-        }
 
         // Web extension (includes console, url, broadcast_channel, etc)
         let blob_store = options
@@ -309,20 +311,17 @@ pub(crate) fn all_extensions(options: ExtensionOptions, is_snapshot: bool) -> Ve
         extensions.push(crate::context::deno_web_init::init());
     }
 
-    // Node.js compatibility layer (require() support)
-    #[cfg(feature = "node_compat")]
-    if options.enable_node_compat {
-        // Create FileSystem for deno_fs and deno_node
-        // Use deno_fs::sync::MaybeArc which is Rc in non-sync mode
+    // deno_web/02_timers.js unconditionally lazy-loads ext:deno_node/internal/timers.mjs,
+    // so deno_node must always be registered when deno_web_api is enabled.
+    #[cfg(all(feature = "node_compat", feature = "deno_web_api"))]
+    {
         let fs: deno_fs::FileSystemRc = deno_fs::sync::new_rc(deno_fs::RealFs);
-
-        let node_options = options
-            .node_compat_options
-            .unwrap_or_default();
-
-        // Add deno_io, deno_fs, and deno_node extensions
-        // These must be loaded after deno_web extensions
-        extensions.extend(crate::node_compat::create_node_extensions(node_options, fs));
+        if options.enable_node_compat {
+            let node_options = options.node_compat_options.unwrap_or_default();
+            extensions.extend(crate::node_compat::create_node_extensions(node_options, fs));
+        } else {
+            extensions.extend(crate::node_compat::create_minimal_node_extensions(fs));
+        }
     }
 
     extensions

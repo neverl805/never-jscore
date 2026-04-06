@@ -402,12 +402,13 @@ print(result)  # {'tagName': 'H1', 'text': 'Hello'}
 ```
 
 **支持的 Node.js 模块**：
-- ✅ `require()` 函数
-- ✅ 内置模块：path, fs, crypto, buffer, stream, url, util, events 等
-- ✅ npm 包：jsdom, lodash, crypto-js 等
+- ✅ `require()` 函数（全局可用）
+- ✅ 内置模块：path, fs, crypto, buffer, stream, url, util, events, sqlite 等
+- ✅ npm 包：jsdom, lodash, crypto-js, ws 等
 - ✅ `__dirname` / `__filename`
-- ✅ `process.env` / `process.cwd()`
-- ✅ `Buffer` 全局对象
+- ✅ `process.env` / `process.cwd()`（通过 `require('process')` 访问）
+- ✅ `Buffer` 全局对象（v3.2.0 修复）
+- ✅ `setImmediate` / `clearImmediate`（v3.2.0 修复）
 
 详见：[Node.js API 对比文档](NODEJS_V25_API_COMPARISON.md)
 
@@ -968,6 +969,34 @@ python tests/run_all_tests.py
 ---
 
 ## 更新日志
+
+### v3.2.0 (2026-04-06) 🔧 Node.js 兼容性修复 & 运行时优化
+
+#### V8 / Deno Core 升级
+- **deno_core 0.380 → 0.396**，V8 引擎 ~13.0 → **14.7**
+- **V8 14.7 新特性**：更强的 JIT（TurboFan/Maglev 优化）、更完整的 ES2024 支持、WebAssembly 性能提升
+- **simdutf 集成**：SIMD 加速的 UTF-8 / Base64 编解码，`atob`/`btoa` 性能大幅提升
+- 新增 `deno_node_sqlite` / `deno_node_crypto` 作为独立 crate，提供 `node:sqlite` / `node:crypto` 支持
+- `.cargo/config.toml` 新增 `RUSTY_V8_ARCHIVE` 配置（`force = true`），无需手动设置环境变量即可编译
+
+#### 反检测增强
+- 🛡️ **Node.js 全局变量设为不可枚举**（`enumerable: false`）
+  - `Buffer`, `global`, `require`, `module`, `__dirname`, `__filename`, `setImmediate`, `clearImmediate` 不再出现在 `Object.keys(globalThis)` / `for..in` 中
+- 🛡️ **反射 API 隐藏 Node.js 特征**
+  - `hiddenGlobalProps` 新增：`global`, `Buffer`, `require`, `module`, `__dirname`, `__filename`, `setImmediate`, `clearImmediate`, `process`
+  - 对 `Object.getOwnPropertyNames` / `Reflect.ownKeys` / `Object.getOwnPropertyDescriptors` 同样生效
+- 🛡️ **Error.stack 清理增强**
+  - 新增过滤内部脚本名：`<init_core>`, `<init_xhr>`, `<exec>`, `<eval_async>`
+
+#### 性能优化
+- ⚡ **定时器清理复杂度从 O(总计数) 降为 O(本次创建数)**
+  - 原：`for i in 0..=totalTimerCount+1000`（随执行次数线性增长）
+  - 现：`for i in baseId..=endId`（仅清理本次执行窗口内创建的定时器）
+- ⚡ **微任务队列排空改为自适应终止**
+  - 原：固定 poll 10 次（无论队列是否已空）
+  - 现：`Poll::Ready`（队列空）或 `Poll::Pending`（仅剩 I/O/定时器）时立即退出，最大 32 次兜底
+
+---
 
 ### v3.1.0 (2026-01-30) ⚡ 性能优化与稳定性修复
 
