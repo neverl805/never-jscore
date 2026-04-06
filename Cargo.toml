@@ -74,8 +74,8 @@ sys_traits = { version = "0.1.27", features = ["libc", "real", "winapi"], option
 
 # Node.js 兼容层依赖
 deno_node = { git = "https://github.com/neverl805/deno", branch = "main", optional = true, default-features = false  }
-deno_node_crypto = { git = "https://github.com/neverl805/deno", branch = "main", optional = true , default-features = false }
-deno_node_sqlite = { git = "https://github.com/neverl805/deno", branch = "main", optional = true , default-features = false }
+deno_node_crypto = { git = "https://github.com/neverl805/deno", branch = "main", optional = true}
+deno_node_sqlite = { git = "https://github.com/neverl805/deno", branch = "main", optional = true}
 deno_fs = { git = "https://github.com/neverl805/deno", branch = "main", optional = true , default-features = false }
 deno_io = { git = "https://github.com/neverl805/deno", branch = "main", optional = true , default-features = false }
 deno_os = { git = "https://github.com/neverl805/deno", branch = "main", optional = true , default-features = false }
