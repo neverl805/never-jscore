@@ -53,7 +53,7 @@ jobs:
           curl -fL "https://github.com/denoland/rusty_v8/releases/download/v147.0.0/${FILE}.gz" \
             -o "${FILE}.gz"
           gzip -d -k "${FILE}.gz"
-          echo "RUSTY_V8_ARCHIVE=$PWD/${FILE}" >> $GITHUB_ENV
+          echo "RUSTY_V8_ARCHIVE=$GITHUB_WORKSPACE/${FILE}" >> $GITHUB_ENV
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.4
@@ -105,8 +105,8 @@ jobs:
           curl -fL "https://github.com/denoland/rusty_v8/releases/download/v147.0.0/${FILE}.gz" \
             -o "${FILE}.gz"
           gzip -d -k "${FILE}.gz"
-          # maturin-action manylinux 容器将工作区挂载到 /project
-          echo "RUSTY_V8_ARCHIVE=/project/${FILE}" >> $GITHUB_ENV
+          # maturin-action 将 $GITHUB_WORKSPACE 以相同绝对路径挂入容器
+          echo "RUSTY_V8_ARCHIVE=$GITHUB_WORKSPACE/${FILE}" >> $GITHUB_ENV
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.4
