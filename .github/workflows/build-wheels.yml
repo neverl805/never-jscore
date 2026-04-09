@@ -123,10 +123,11 @@ jobs:
             # 禁用 submodule 递归（避免 cargo git dep 报错）
             git config --global fetch.recurseSubmodules false
             # clang/libclang: bindgen (libsqlite3-sys, deno_node_sqlite) 必须
+            # gcc: 作为 GNU ld 的链接器驱动（替换 rust-lld，解决 V8 TPOFF32 问题）
             # openssl-devel: deno_tls/deno_fetch 依赖
             # perl-IPC-Cmd: ring crate 编译依赖
-            dnf install -y clang openssl-devel perl-IPC-Cmd 2>/dev/null || \
-            yum install -y clang openssl-devel perl-IPC-Cmd 2>/dev/null || true
+            dnf install -y gcc clang openssl-devel perl-IPC-Cmd 2>/dev/null || \
+            yum install -y gcc clang openssl-devel perl-IPC-Cmd 2>/dev/null || true
         env:
           SCCACHE_GHA_ENABLED: "true"
           V8_FROM_SOURCE: '0'
