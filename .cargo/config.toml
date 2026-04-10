@@ -9,7 +9,10 @@ rustflags = [
 # V8 使用 initial-exec TLS 模型（TPOFF32 重定位），rust-lld 拒绝在 .so 中使用此重定位。
 # 切回 GNU ld (bfd) 并加 -z,notext 允许 text/TLS 重定位，glibc 2.28+ 的 dlopen 可正确处理。
 [target.x86_64-unknown-linux-gnu]
-linker = "gcc"
+# 必须用系统 GCC(/usr/bin/gcc, binutils ~2.30)而非 toolset GCC 14(binutils 2.42)
+# binutils 2.38+ 对 hidden symbol + TPOFF32 + -shared 加了绝对限制
+# 系统 GCC 8 的 binutils 2.30 没有此限制，V8 prebuilt 的 TLS initial-exec 可以链接
+linker = "/usr/bin/gcc"
 rustflags = [
     "-C", "link-arg=-Wl,-z,notext",
 ]

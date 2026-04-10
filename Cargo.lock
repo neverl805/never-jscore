@@ -1004,6 +1004,7 @@ dependencies = [
 [[package]]
 name = "deno_core"
 version = "0.396.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "anyhow",
  "az",
@@ -1048,6 +1049,7 @@ checksum = "a9efff8990a82c1ae664292507e1a5c6749ddd2312898cdf9cd7cb1fd4bc64c6"
 [[package]]
 name = "deno_crypto"
 version = "0.257.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1088,6 +1090,7 @@ dependencies = [
 [[package]]
 name = "deno_crypto_provider"
 version = "0.37.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "aws-lc-sys",
 ]
@@ -1095,6 +1098,7 @@ dependencies = [
 [[package]]
 name = "deno_dotenv"
 version = "0.12.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "deno_path_util",
  "sys_traits",
@@ -1129,6 +1133,7 @@ dependencies = [
 [[package]]
 name = "deno_features"
 version = "0.40.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "deno_core",
  "serde",
@@ -1138,6 +1143,7 @@ dependencies = [
 [[package]]
 name = "deno_fetch"
 version = "0.267.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -1176,6 +1182,7 @@ dependencies = [
 [[package]]
 name = "deno_fs"
 version = "0.153.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "async-trait",
  "base32",
@@ -1201,6 +1208,7 @@ dependencies = [
 [[package]]
 name = "deno_inspector_server"
 version = "0.17.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "deno_core",
  "deno_error",
@@ -1218,6 +1226,7 @@ dependencies = [
 [[package]]
 name = "deno_io"
 version = "0.153.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "async-trait",
  "deno_core",
@@ -1242,6 +1251,7 @@ dependencies = [
 [[package]]
 name = "deno_maybe_sync"
 version = "0.30.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 
 [[package]]
 name = "deno_media_type"
@@ -1270,6 +1280,7 @@ dependencies = [
 [[package]]
 name = "deno_net"
 version = "0.235.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "deno_core",
  "deno_error",
@@ -1298,6 +1309,7 @@ dependencies = [
 [[package]]
 name = "deno_node"
 version = "0.181.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "base64 0.22.1",
  "boxed_error",
@@ -1357,6 +1369,7 @@ dependencies = [
 [[package]]
 name = "deno_node_crypto"
 version = "0.13.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "aead-gcm-stream",
  "aes",
@@ -1419,6 +1432,7 @@ dependencies = [
 [[package]]
 name = "deno_node_sqlite"
 version = "0.13.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "deno_core",
  "deno_error",
@@ -1430,6 +1444,7 @@ dependencies = [
 [[package]]
 name = "deno_ops"
 version = "0.272.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "indexmap",
  "proc-macro2",
@@ -1445,6 +1460,7 @@ dependencies = [
 [[package]]
 name = "deno_os"
 version = "0.60.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "deno_core",
  "deno_error",
@@ -1464,6 +1480,7 @@ dependencies = [
 [[package]]
 name = "deno_package_json"
 version = "0.45.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "boxed_error",
  "capacity_builder",
@@ -1495,6 +1512,7 @@ dependencies = [
 [[package]]
 name = "deno_permissions"
 version = "0.102.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "capacity_builder",
  "chrono",
@@ -1523,6 +1541,7 @@ dependencies = [
 [[package]]
 name = "deno_process"
 version = "0.58.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "deno_core",
  "deno_error",
@@ -1569,6 +1588,7 @@ dependencies = [
 [[package]]
 name = "deno_signals"
 version = "0.34.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "deno_error",
  "libc",
@@ -1581,6 +1601,7 @@ dependencies = [
 [[package]]
 name = "deno_subprocess_windows"
 version = "0.38.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "fastrand",
  "futures-channel",
@@ -1601,6 +1622,7 @@ dependencies = [
 [[package]]
 name = "deno_tls"
 version = "0.230.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "deno_core",
  "deno_error",
@@ -1646,6 +1668,7 @@ dependencies = [
 [[package]]
 name = "deno_web"
 version = "0.274.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "async-trait",
  "brotli 6.0.0",
@@ -1667,6 +1690,7 @@ dependencies = [
 [[package]]
 name = "deno_webidl"
 version = "0.243.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "deno_core",
 ]
@@ -1674,6 +1698,7 @@ dependencies = [
 [[package]]
 name = "deno_webstorage"
 version = "0.238.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "deno_core",
  "deno_error",
@@ -3537,6 +3562,7 @@ dependencies = [
 [[package]]
 name = "node_resolver"
 version = "0.81.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3566,6 +3592,7 @@ dependencies = [
 [[package]]
 name = "node_shim"
 version = "0.18.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "exec",
  "serde_json",
@@ -4938,6 +4965,7 @@ dependencies = [
 [[package]]
 name = "serde_v8"
 version = "0.305.0"
+source = "git+https://github.com/neverl805/deno?branch=main#ac58c284111f181823588b0ef959c5402f9bab57"
 dependencies = [
  "deno_error",
  "num-bigint",
