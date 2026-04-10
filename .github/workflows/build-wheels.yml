@@ -118,18 +118,28 @@ jobs:
           before-script-linux: |
             git config --global fetch.recurseSubmodules false
 
-            # Keep the final link step on gcc/binutils (see .cargo/config.toml).
-            # Install clang-devel only to satisfy bindgen / libsqlite3-sys, which
-            # needs libclang.so at build time.
-            dnf install -y clang-devel openssl-devel perl-IPC-Cmd pkg-config cmake
+            # manylinux_2_28 ships gcc-toolset-14 by default, but this project's
+            # prebuilt V8 archive needs the older EL8 linker behavior from
+            # system gcc/binutils (gcc 8.x + binutils 2.30).
+            #
+            # clang-devel is still needed for bindgen / libsqlite3-sys.
+            dnf install -y gcc gcc-c++ binutils clang-devel openssl-devel perl-IPC-Cmd pkg-config cmake
 
             echo "=== Build Environment ==="
             cat /etc/os-release
             echo "/usr/bin/gcc: $(/usr/bin/gcc --version | head -1)"
-            echo "ld: $(ld --version | head -1)"
+            echo "/usr/bin/x86_64-redhat-linux-gcc-8: $(/usr/bin/x86_64-redhat-linux-gcc-8 --version | head -1)"
+            echo "/usr/bin/ld: $(/usr/bin/ld --version | head -1)"
+            ls -l /usr/bin/gcc /usr/bin/x86_64-redhat-linux-gcc-8 /usr/bin/ld
             echo "libclang: $(ls -1 /usr/lib64/libclang.so* | head -1)"
         env:
           V8_FROM_SOURCE: '0'
+          CC: /usr/bin/x86_64-redhat-linux-gcc-8
+          CXX: /usr/bin/x86_64-redhat-linux-g++
+          AR: /usr/bin/ar
+          NM: /usr/bin/nm
+          RANLIB: /usr/bin/ranlib
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: /usr/bin/x86_64-redhat-linux-gcc-8
           LIBCLANG_PATH: /usr/lib64
           RUSTY_V8_ARCHIVE: ${{ env.RUSTY_V8_ARCHIVE }}
 
