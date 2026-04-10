@@ -83,9 +83,9 @@ jobs:
           if-no-files-found: error
 
   # ─── Linux ────────────────────────────────────────────────────────────────
-  # 使用 manylinux_2_28 (AlmaLinux 8, glibc 2.28+)
-  # 覆盖: Ubuntu 20.04+, Debian 11+, CentOS/RHEL 8+, Fedora 32+
-  # 自带: GCC 12, clang 15, cmake 3.26+, Python 3.8-3.13, pkg-config
+  # 使用 manylinux_2_34 (AlmaLinux 9, glibc 2.34+)
+  # 覆盖: Ubuntu 21.04+, Debian 11+, RHEL 9+, Fedora 34+
+  # 基础: GCC 11, 通过 gcc-toolset-14 升级至 GCC 14
   build_wheels_linux:
     name: Build Linux wheels (${{ matrix.target }})
     runs-on: ubuntu-latest
@@ -115,21 +115,27 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          # manylinux_2_28: AlmaLinux 8 based, glibc 2.28, 最广兼容性
-          manylinux: "2_28"
+          manylinux: "2_34"
           args: --release --strip --out dist -i python${{ matrix.python-version }}
           sccache: 'true'
           before-script-linux: |
             # 禁用 submodule 递归（避免 cargo git dep 报错）
             git config --global fetch.recurseSubmodules false
-            # clang/libclang: bindgen (libsqlite3-sys) 必须
-            # openssl-devel: deno_tls/deno_fetch 依赖
-            # perl-IPC-Cmd: ring crate 编译依赖
-            # gcc (系统): 确保 /usr/bin/gcc 存在（系统 GCC 8, binutils ~2.30）
-            dnf install -y gcc clang openssl-devel perl-IPC-Cmd 2>/dev/null || \
-            yum install -y gcc clang openssl-devel perl-IPC-Cmd 2>/dev/null || true
-            echo "System GCC: $(/usr/bin/gcc --version | head -1)"
-            echo "System ld: $(/usr/bin/ld --version | head -1)"
+
+            # 安装 gcc-toolset-14 (GCC 14, binutils 2.42+) 和编译依赖
+            # AlmaLinux 9 自带 GCC 11, 但 gcc-toolset-14 提供更优的编译器
+            dnf install -y gcc-toolset-14 clang openssl-devel perl-IPC-Cmd pkg-config cmake
+
+            # 激活 gcc-toolset-14 — 设置 PATH/CC/CXX 让后续编译使用 GCC 14
+            source /opt/rh/gcc-toolset-14/enable
+            echo "CC=/opt/rh/gcc-toolset-14/root/usr/bin/gcc" >> $GITHUB_ENV
+            echo "CXX=/opt/rh/gcc-toolset-14/root/usr/bin/g++" >> $GITHUB_ENV
+            export PATH="/opt/rh/gcc-toolset-14/root/usr/bin:$PATH"
+
+            echo "=== Build Environment ==="
+            echo "GCC: $(gcc --version | head -1)"
+            echo "ld:  $(ld --version | head -1)"
+            echo "clang: $(clang --version | head -1)"
         env:
           SCCACHE_GHA_ENABLED: "true"
           V8_FROM_SOURCE: '0'
