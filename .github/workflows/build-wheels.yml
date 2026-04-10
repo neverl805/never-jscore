@@ -125,17 +125,17 @@ jobs:
             # clang-devel is still needed for bindgen / libsqlite3-sys.
             dnf install -y gcc gcc-c++ binutils clang-devel openssl-devel perl-IPC-Cmd pkg-config cmake
 
-            cat > /tmp/gcc8-system-ld <<'EOF'
+            cat > /tmp/gcc8-system-gcc <<'EOF'
             #!/bin/sh
             exec /usr/bin/x86_64-redhat-linux-gcc-8 -B/usr/bin "$@"
             EOF
-            chmod +x /tmp/gcc8-system-ld
+            chmod +x /tmp/gcc8-system-gcc
 
-            cat > /tmp/gpp8-system-ld <<'EOF'
+            cat > /tmp/gpp8-system-g++ <<'EOF'
             #!/bin/sh
             exec /usr/bin/x86_64-redhat-linux-g++ -B/usr/bin "$@"
             EOF
-            chmod +x /tmp/gpp8-system-ld
+            chmod +x /tmp/gpp8-system-g++
 
             echo "=== Build Environment ==="
             cat /etc/os-release
@@ -144,16 +144,16 @@ jobs:
             echo "/usr/bin/ld: $(/usr/bin/ld --version | head -1)"
             ls -l /usr/bin/gcc /usr/bin/x86_64-redhat-linux-gcc-8 /usr/bin/ld
             echo "gcc8 default ld: $(/usr/bin/x86_64-redhat-linux-gcc-8 -print-prog-name=ld)"
-            echo "gcc8 wrapper ld: $(/tmp/gcc8-system-ld -print-prog-name=ld)"
+            echo "gcc8 wrapper ld: $(/tmp/gcc8-system-gcc -print-prog-name=ld)"
             echo "libclang: $(ls -1 /usr/lib64/libclang.so* | head -1)"
         env:
           V8_FROM_SOURCE: '0'
-          CC: /tmp/gcc8-system-ld
-          CXX: /tmp/gpp8-system-ld
+          CC: /tmp/gcc8-system-gcc
+          CXX: /tmp/gpp8-system-g++
           AR: /usr/bin/ar
           NM: /usr/bin/nm
           RANLIB: /usr/bin/ranlib
-          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: /tmp/gcc8-system-ld
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: /tmp/gcc8-system-gcc
           LIBCLANG_PATH: /usr/lib64
           RUSTY_V8_ARCHIVE: ${{ env.RUSTY_V8_ARCHIVE }}
 
