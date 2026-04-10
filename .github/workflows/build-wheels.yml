@@ -83,13 +83,13 @@ jobs:
           if-no-files-found: error
 
   # ─── Linux ────────────────────────────────────────────────────────────────
-  # 使用 manylinux_2_34 (AlmaLinux 9, glibc 2.34+)
-  # 覆盖: Ubuntu 21.04+, Debian 11+, RHEL 9+, Fedora 34+
-  # 使用 lld 链接器: 解决 V8 预编译库 TLS 重定位 (R_X86_64_TPOFF32) 与
-  #   共享库不兼容的问题 — GNU ld 拒绝此重定位，lld 可以正确处理
+  # 使用 manylinux_2_28 (AlmaLinux 8, glibc 2.28+)
+  # 覆盖: Debian 10+, Ubuntu 18.10+, RHEL 8+, Fedora 29+
+  # 与仓库 .cargo/config.toml 的链接假设一致:
+  #   使用 AlmaLinux 8 的 system gcc/binutils 处理 V8 预编译库 TLS 重定位
   build_wheels_linux:
     name: Build Linux wheels (${{ matrix.target }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         python-version: ['3.11']
@@ -113,27 +113,25 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          manylinux: "2_34"
-          args: --release --strip --out dist -i python${{ matrix.python-version }}
+          manylinux: "2_28"
+          args: --release --locked --strip --compatibility pypi --out dist -i python${{ matrix.python-version }}
           before-script-linux: |
             # 禁用 submodule 递归（避免 cargo git dep 报错）
             git config --global fetch.recurseSubmodules false
 
             # 安装编译依赖
-            # clang/lld: 用 lld 替代 GNU ld 解决 V8 TLS 重定位问题
+            # 依赖 manylinux_2_28 的 system gcc/binutils，不再强制改用 clang/lld
             # openssl-devel: deno_tls/deno_fetch 依赖
             # perl-IPC-Cmd: ring crate 编译依赖
-            dnf install -y clang lld openssl-devel perl-IPC-Cmd pkg-config cmake
+            dnf install -y openssl-devel perl-IPC-Cmd pkg-config cmake
 
             echo "=== Build Environment ==="
-            echo "GCC: $(gcc --version | head -1)"
-            echo "lld: $(lld --version | head -1)"
-            echo "clang: $(clang --version | head -1)"
+            cat /etc/os-release
+            echo "/usr/bin/gcc: $(/usr/bin/gcc --version | head -1)"
+            echo "ld: $(ld --version | head -1)"
         env:
           V8_FROM_SOURCE: '0'
           RUSTY_V8_ARCHIVE: ${{ env.RUSTY_V8_ARCHIVE }}
-          # 使用 lld 链接器 — 它能处理 V8 的 IE TLS 重定位到共享库中
-          RUSTFLAGS: "-C linker=clang -C link-arg=-fuse-ld=lld"
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
