@@ -1,6 +1,6 @@
 [package]
 name = "never_jscore"
-version = "3.1.0"
+version = "3.2.0"
 edition = "2021"
 authors = ["never_jscore contributors"]
 description = "High-performance Python JavaScript execution engine based on Deno Core (V8) with full Promise/async support"
